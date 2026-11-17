@@ -1,0 +1,23 @@
+{
+  "name": "compiler-visualization-tool",
+  "version": "2.0.0",
+  "description": "Interactive educational 6-stage compiler visualization platform built with modern JavaScript and D3.js",
+  "type": "module",
+  "scripts": {
+    "test": "node tests/compiler.test.js"
+  },
+  "keywords": [
+    "compiler",
+    "visualization",
+    "ast",
+    "lexer",
+    "parser",
+    "tac",
+    "optimization",
+    "assembly",
+    "d3js",
+    "education"
+  ],
+  "author": "Zilay Patel",
+  "license": "MIT"
+}

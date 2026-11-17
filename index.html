@@ -1,58 +1,207 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="light">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Compiler Visualization Tool</title>
-  <!-- Bootstrap CSS for responsive design -->
-  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" />
+  
+  <!-- Google Fonts: Inter & JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  
+  <!-- D3.js v7 for SVG tree visualization -->
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+  
+  <!-- Modern Stylesheet -->
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <div class="container-fluid">
-    <!-- Header -->
-    <header class="my-3 text-center">
-      <h1>Compiler Visualization Tool</h1>
-    </header>
+  <!-- App Header -->
+  <header class="app-header">
+    <div class="header-left">
+      <div class="app-brand-icon">⚡</div>
+      <div>
+        <h1 class="app-title">Compiler Visualization Tool</h1>
+        <p class="app-subtitle">Interactive 6-Stage Educational Compiler Pipeline</p>
+      </div>
+    </div>
+    
+    <div class="header-right">
+      <div class="preset-wrapper">
+        <label for="presetSelect">Example:</label>
+        <select id="presetSelect" class="preset-dropdown" aria-label="Select preloaded code example"></select>
+      </div>
+    </div>
+  </header>
 
-    <!-- Code Input Section -->
-    <section id="inputSection" class="mb-3">
-      <div class="form-group">
-        <label for="codeInput">Enter Code:</label>
-        <textarea id="codeInput" class="form-control" rows="5" placeholder="Type your arithmetic expression here..."></textarea>
-      </div>
-      <button id="startBtn" class="btn btn-primary">Start</button>
-      <button id="clearBtn" class="btn btn-danger">Clear</button>
-    </section>
+  <!-- Error Notification Banner -->
+  <div id="errorBanner" class="error-banner" style="display: none;"></div>
+  
+  <!-- Status Toast -->
+  <div id="statusNotification" class="status-toast"></div>
 
-    <!-- Visualization Section -->
-    <section id="visualizationSection">
-      <!-- Tokens Display -->
-      <div id="tokensDisplay" class="mb-3">
-        <h3>Tokens</h3>
-        <div id="tokensList"></div>
-      </div>
-      <!-- Parse Tree Display -->
-      <div id="parseTreeDisplay" class="mb-3">
-        <h3>Parse Tree</h3>
-        <svg id="parseTreeSvg" width="100%" height="400"></svg>
-      </div>
-      <!-- Semantic Analysis and Code Generation Display -->
-      <div id="codeGenDisplay" class="mb-3">
-        <h3>Generated Code / Intermediate Representation</h3>
-        <div class="code-box">
-          <pre id="codeGenOutput"></pre>
+  <!-- Stepper Navigation Bar -->
+  <nav class="stepper-bar">
+    <div class="stepper-nav-controls">
+      <button id="stepPrevBtn" class="stepper-ctrl-btn" title="Previous Phase">◀ Back</button>
+      <div id="stepperNav" class="stepper-items"></div>
+      <button id="stepNextBtn" class="stepper-ctrl-btn" title="Next Phase">Next ▶</button>
+    </div>
+  </nav>
+
+  <!-- Phase Explanation Callout -->
+  <div class="phase-callout-container">
+    <div id="phaseCallout" class="phase-callout"></div>
+  </div>
+
+  <!-- Main Workspace Grid -->
+  <main class="workspace-grid">
+    <!-- Left Column: Source Code Editor -->
+    <section class="editor-section">
+      <div class="card editor-card">
+        <div class="card-header">
+          <div class="card-title-group">
+            <span class="card-icon">📝</span>
+            <span class="card-title">Source Code</span>
+          </div>
+          <div class="editor-actions">
+            <button id="runBtn" class="btn btn-primary" title="Compile Code Across All Phases">▶ Run / Compile</button>
+            <button id="clearBtn" class="btn btn-secondary" title="Clear Code and Visualizations">Clear</button>
+          </div>
+        </div>
+
+        <div class="editor-container">
+          <div id="lineNumbers" class="line-numbers"></div>
+          <textarea id="codeInput" class="code-textarea" spellcheck="false" placeholder="// Enter arithmetic expressions or variable assignments here...&#10;let x = 15;&#10;let y = x * 2 + 5;"></textarea>
+        </div>
+
+        <div class="editor-footer">
+          <span id="presetDescription" class="preset-desc-text"></span>
+          <span class="grammar-hint">Grammar: <code>let x = 10; y = (x + 2) * 3;</code></span>
         </div>
       </div>
     </section>
-  </div>
 
-  <!-- JavaScript Libraries -->
-  <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.1/dist/umd/popper.min.js"></script>
-  <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
-  <!-- D3.js for visualizations -->
-  <script src="https://d3js.org/d3.v6.min.js"></script>
-  <script src="script.js"></script>
+    <!-- Right Column: Multi-Phase Visualization Panes -->
+    <section class="visualizer-section">
+      
+      <!-- Phase 1: Lexical Analysis -->
+      <div id="pane-lexer" class="phase-pane active card">
+        <div class="card-header">
+          <div class="card-title-group">
+            <span class="card-icon">🔤</span>
+            <span class="card-title">Phase 1: Lexical Analysis (Tokens)</span>
+          </div>
+        </div>
+        <div class="card-body">
+          <div id="tokensDisplayContainer"></div>
+        </div>
+      </div>
+
+      <!-- Phase 2: Syntax Analysis (AST) -->
+      <div id="pane-parser" class="phase-pane card">
+        <div class="card-header">
+          <div class="card-title-group">
+            <span class="card-icon">🌳</span>
+            <span class="card-title">Phase 2: Abstract Syntax Tree (AST)</span>
+          </div>
+          <div class="ast-controls">
+            <button id="astZoomIn" class="btn btn-sm btn-outline" title="Zoom In">+</button>
+            <button id="astZoomOut" class="btn btn-sm btn-outline" title="Zoom Out">−</button>
+            <button id="astZoomReset" class="btn btn-sm btn-outline" title="Reset View">Reset</button>
+            <button id="exportAstSvg" class="btn btn-sm btn-outline" title="Export as SVG">SVG</button>
+            <button id="exportAstPng" class="btn btn-sm btn-outline" title="Export as PNG">PNG</button>
+          </div>
+        </div>
+        <div class="card-body ast-body">
+          <div class="ast-legend">
+            <span class="legend-item"><span class="legend-color" style="background:#6366f1"></span> Root</span>
+            <span class="legend-item"><span class="legend-color" style="background:#0ea5e9"></span> VarDecl</span>
+            <span class="legend-item"><span class="legend-color" style="background:#06b6d4"></span> Assign</span>
+            <span class="legend-item"><span class="legend-color" style="background:#f59e0b"></span> BinaryOp</span>
+            <span class="legend-item"><span class="legend-color" style="background:#10b981"></span> Literal</span>
+            <span class="legend-item"><span class="legend-color" style="background:#3b82f6"></span> Identifier</span>
+            <span class="legend-hint">💡 Tip: Drag to pan, scroll to zoom, click parent nodes to collapse.</span>
+          </div>
+          <div class="ast-svg-wrapper">
+            <svg id="astSvg" width="100%" height="480"></svg>
+          </div>
+        </div>
+      </div>
+
+      <!-- Phase 3: Semantic Analysis -->
+      <div id="pane-semantic" class="phase-pane card">
+        <div class="card-header">
+          <div class="card-title-group">
+            <span class="card-icon">🔍</span>
+            <span class="card-title">Phase 3: Semantic Analysis & Symbol Table</span>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="mb-4">
+            <h6 class="section-heading">Diagnostics & Compile-Time Checks:</h6>
+            <div id="semanticDiagnosticsContainer"></div>
+          </div>
+          <div>
+            <h6 class="section-heading">Symbol Table:</h6>
+            <div id="symbolTableContainer"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Phase 4: Intermediate Code Generation (TAC) -->
+      <div id="pane-tac" class="phase-pane card">
+        <div class="card-header">
+          <div class="card-title-group">
+            <span class="card-icon">⚙️</span>
+            <span class="card-title">Phase 4: Three-Address Code (TAC) & Quadruples</span>
+          </div>
+          <div class="pane-actions">
+            <button id="copyTacBtn" class="btn btn-sm btn-outline" title="Copy TAC to Clipboard">📋 Copy TAC</button>
+          </div>
+        </div>
+        <div class="card-body">
+          <div id="tacDisplayContainer"></div>
+        </div>
+      </div>
+
+      <!-- Phase 5: Code Optimization -->
+      <div id="pane-optimizer" class="phase-pane card">
+        <div class="card-header">
+          <div class="card-title-group">
+            <span class="card-icon">⚡</span>
+            <span class="card-title">Phase 5: Constant Folding & Optimization</span>
+          </div>
+        </div>
+        <div class="card-body">
+          <div id="optimizerDisplayContainer"></div>
+        </div>
+      </div>
+
+      <!-- Phase 6: Target Code Generation -->
+      <div id="pane-codegen" class="phase-pane card">
+        <div class="card-header">
+          <div class="card-title-group">
+            <span class="card-icon">💻</span>
+            <span class="card-title">Phase 6: Target RISC Assembly</span>
+          </div>
+          <div class="pane-actions">
+            <button id="copyAsmBtn" class="btn btn-sm btn-outline" title="Copy Assembly Code">📋 Copy Assembly</button>
+          </div>
+        </div>
+        <div class="card-body">
+          <div id="codegenDisplayContainer"></div>
+        </div>
+      </div>
+
+    </section>
+  </main>
+
+  <!-- Tooltip for D3 Nodes -->
+  <div id="astTooltip" class="ast-tooltip"></div>
+
+  <!-- Main ES6 Application Script -->
+  <script type="module" src="js/app.js"></script>
 </body>
 </html>
